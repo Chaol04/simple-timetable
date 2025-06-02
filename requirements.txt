@@ -1,2 +1,3 @@
-ask-sdk-webservice-support==1.22.0
-Flask==2.2.5
+ask-sdk-core
+Flask
+ask-sdk-webservice-support
