@@ -1,3 +1,4 @@
+flask
 ask-sdk-core
-Flask
 ask-sdk-webservice-support
+gunicorn
