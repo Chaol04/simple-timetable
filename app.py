@@ -1,6 +1,5 @@
 from flask import Flask, request
 from ask_sdk_core.skill_builder import SkillBuilder
-from ask_sdk_webservice_support.webservice_handler import WebserviceSkillHandler
 from ask_sdk_core.dispatch_components import AbstractRequestHandler
 from ask_sdk_core.utils import is_intent_name
 from datetime import datetime, timedelta
@@ -8,7 +7,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 sb = SkillBuilder()
 
-# 🗓 時間割データ（1〜5限、月〜土）
+# 📅 時間割データ（月〜土、1〜5限）
 timetable = {
     "月曜日": ["自己発見と大学生活", "コンピュータ概論", "", "", ""],
     "火曜日": ["", "コンピュータのための数学", "批判的思考と論理的表現", "大学数学の基礎演習", ""],
@@ -18,41 +17,37 @@ timetable = {
     "土曜日": ["", "", "電子回路", "電子回路", ""]
 }
 
-# 曜日リスト（月〜土対応）
 weekdays = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"]
 
 def get_japanese_weekday(date):
     return weekdays[date.weekday()]
 
-# Intent Handlers（省略せずすべて対応）
-
-class GetTodayTimetableHandler(AbstractRequestHandler):
+# Intent 1: 今日の時間割
+class GetTodayTimetableIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
         return is_intent_name("GetTodayTimetableIntent")(handler_input)
 
     def handle(self, handler_input):
         today = get_japanese_weekday(datetime.now())
         schedule = timetable.get(today, [])
-        if schedule:
-            speech = f"{today}の時間割は、" + "、".join(schedule) + "です。"
-        else:
-            speech = f"{today}の時間割は登録されていません。"
-        return handler_input.response_builder.speak(speech).set_should_end_session(True).response
+        spoken = "、".join(filter(None, schedule))
+        speech = f"{today}の時間割は、{spoken}です。" if spoken else f"{today}の時間割は登録されていません。"
+        return handler_input.response_builder.speak(speech).response
 
-class GetTomorrowTimetableHandler(AbstractRequestHandler):
+# Intent 2: 明日の時間割
+class GetTomorrowTimetableIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
         return is_intent_name("GetTomorrowTimetableIntent")(handler_input)
 
     def handle(self, handler_input):
         tomorrow = get_japanese_weekday(datetime.now() + timedelta(days=1))
         schedule = timetable.get(tomorrow, [])
-        if schedule:
-            speech = f"{tomorrow}の時間割は、" + "、".join(schedule) + "です。"
-        else:
-            speech = f"{tomorrow}の時間割は登録されていません。"
-        return handler_input.response_builder.speak(speech).set_should_end_session(True).response
+        spoken = "、".join(filter(None, schedule))
+        speech = f"{tomorrow}の時間割は、{spoken}です。" if spoken else f"{tomorrow}の時間割は登録されていません。"
+        return handler_input.response_builder.speak(speech).response
 
-class GetDayTimetableHandler(AbstractRequestHandler):
+# Intent 3: 任意曜日の時間割
+class GetDayTimetableIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
         return is_intent_name("GetDayTimetableIntent")(handler_input)
 
@@ -60,13 +55,12 @@ class GetDayTimetableHandler(AbstractRequestHandler):
         slots = handler_input.request_envelope.request.intent.slots
         day = slots["day"].value
         schedule = timetable.get(day, [])
-        if schedule:
-            speech = f"{day}の時間割は、" + "、".join(schedule) + "です。"
-        else:
-            speech = f"{day}の時間割は登録されていません。"
-        return handler_input.response_builder.speak(speech).set_should_end_session(True).response
+        spoken = "、".join(filter(None, schedule))
+        speech = f"{day}の時間割は、{spoken}です。" if spoken else f"{day}の時間割は登録されていません。"
+        return handler_input.response_builder.speak(speech).response
 
-class GetSpecificPeriodHandler(AbstractRequestHandler):
+# Intent 4: 任意曜日 + 限目
+class GetSpecificPeriodIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
         return is_intent_name("GetSpecificPeriodIntent")(handler_input)
 
@@ -76,12 +70,14 @@ class GetSpecificPeriodHandler(AbstractRequestHandler):
         period = int(slots["period"].value) - 1
         schedule = timetable.get(day, [])
         if 0 <= period < len(schedule):
-            speech = f"{day}の{period + 1}限は{schedule[period]}です。"
+            subject = schedule[period] or "登録されていません"
+            speech = f"{day}の{period + 1}限は{subject}です。"
         else:
-            speech = f"{day}の{period + 1}限は登録されていません。"
-        return handler_input.response_builder.speak(speech).set_should_end_session(True).response
+            speech = f"{day}の{period + 1}限は存在しません。"
+        return handler_input.response_builder.speak(speech).response
 
-class GetTodayPeriodHandler(AbstractRequestHandler):
+# Intent 5: 今日の○限
+class GetTodayPeriodIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
         return is_intent_name("GetTodayPeriodIntent")(handler_input)
 
@@ -91,12 +87,14 @@ class GetTodayPeriodHandler(AbstractRequestHandler):
         today = get_japanese_weekday(datetime.now())
         schedule = timetable.get(today, [])
         if 0 <= period < len(schedule):
-            speech = f"今日の{period + 1}限は{schedule[period]}です。"
+            subject = schedule[period] or "登録されていません"
+            speech = f"今日の{period + 1}限は{subject}です。"
         else:
-            speech = f"今日の{period + 1}限は登録されていません。"
-        return handler_input.response_builder.speak(speech).set_should_end_session(True).response
+            speech = f"今日の{period + 1}限は存在しません。"
+        return handler_input.response_builder.speak(speech).response
 
-class GetTomorrowPeriodHandler(AbstractRequestHandler):
+# Intent 6: 明日の○限
+class GetTomorrowPeriodIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
         return is_intent_name("GetTomorrowPeriodIntent")(handler_input)
 
@@ -106,21 +104,21 @@ class GetTomorrowPeriodHandler(AbstractRequestHandler):
         tomorrow = get_japanese_weekday(datetime.now() + timedelta(days=1))
         schedule = timetable.get(tomorrow, [])
         if 0 <= period < len(schedule):
-            speech = f"明日の{period + 1}限は{schedule[period]}です。"
+            subject = schedule[period] or "登録されていません"
+            speech = f"明日の{period + 1}限は{subject}です。"
         else:
-            speech = f"明日の{period + 1}限は登録されていません。"
-        return handler_input.response_builder.speak(speech).set_should_end_session(True).response
+            speech = f"明日の{period + 1}限は存在しません。"
+        return handler_input.response_builder.speak(speech).response
 
-# 登録
-sb.add_request_handler(GetTodayTimetableHandler())
-sb.add_request_handler(GetTomorrowTimetableHandler())
-sb.add_request_handler(GetDayTimetableHandler())
-sb.add_request_handler(GetSpecificPeriodHandler())
-sb.add_request_handler(GetTodayPeriodHandler())
-sb.add_request_handler(GetTomorrowPeriodHandler())
+# Intent 登録
+sb.add_request_handler(GetTodayTimetableIntentHandler())
+sb.add_request_handler(GetTomorrowTimetableIntentHandler())
+sb.add_request_handler(GetDayTimetableIntentHandler())
+sb.add_request_handler(GetSpecificPeriodIntentHandler())
+sb.add_request_handler(GetTodayPeriodIntentHandler())
+sb.add_request_handler(GetTomorrowPeriodIntentHandler())
 
-skill_handler = WebserviceSkillHandler(skill=sb.create())
-
+# Flask ルート
 @app.route("/", methods=["POST"])
 def invoke():
-    return skill_handler.verify_request_and_dispatch(request)
+    return sb.lambda_handler()(request.get_json(force=True), None)
