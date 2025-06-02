@@ -121,4 +121,5 @@ sb.add_request_handler(GetTomorrowPeriodIntentHandler())
 # Flask ルート
 @app.route("/", methods=["POST"])
 def invoke():
+    print("★Alexaからのリクエスト受信:", request.json)
     return sb.lambda_handler()(request.get_json(force=True), None)
