@@ -1,4 +1,3 @@
 flask
-ask-sdk-core
-ask-sdk-webservice-support
 gunicorn
+ask-sdk-core
